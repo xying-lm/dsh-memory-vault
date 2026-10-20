@@ -169,6 +169,37 @@ check('过短消息不入库（captureMinChars）', provided.memoryVault.stats()
   await sleep(1300)
   const ownText = provider2?.text({ agent: { session: sessionC } }) ?? ''
   check('recallRecentWindow=0 时同会话记忆可召回', ownText.includes('pnpm deploy:prod'), JSON.stringify(ownText.slice(0, 120)))
+  // 召回不只是摘要：带 id 指针 + 尾注告诉模型怎么继续取（窗口不变、可达范围变大靠这一环）
+  check('召回每条带 id 指针', /id=\d+/.test(ownText), JSON.stringify(ownText.slice(0, 80)))
+  check('召回尾注指向 memory_open', ownText.includes('memory_open') && ownText.includes('memory_search'), JSON.stringify(ownText.slice(-120)))
+}
+
+// ── 按需分页：memory_open 的 store 侧行为 + search 的 offset 翻页 ──
+{
+  const store = provided.memoryVault.store
+  const body = '开头标记HEAD ' + '甲'.repeat(1200) + '中间标记MID ' + '乙'.repeat(1800) + '结尾标记TAIL'
+  const saved = store.save({ ts: Date.now(), session: 'paging', role: 'user', title: '长文分页', body })
+  const p1 = store.open(saved.id, { chars: 1000 })
+  check('memory_open 首段长度与起点', p1 && p1.offset === 0 && p1.body.length === 1000, JSON.stringify({ len: p1?.body.length, off: p1?.offset }))
+  check('memory_open 给出 next', p1.next === 1000, String(p1.next))
+  check('memory_open 报告总字数', p1.total === body.length, `${p1.total} vs ${body.length}`)
+  const p2 = store.open(saved.id, { offset: p1.next, chars: 1000 })
+  check('续读从 next 接着且内容不同', p2.offset === 1000 && p2.body !== p1.body, JSON.stringify({ off: p2?.offset }))
+  const tail = store.open(saved.id, { offset: p2.next, chars: 12000 })
+  check('读到末尾 next 为 null', tail.next === null && tail.end === tail.total, JSON.stringify({ next: tail?.next, end: tail?.end, total: tail?.total }))
+  check('末尾那段确实含结尾标记', tail.body.includes('结尾标记TAIL'))
+  check('越界 offset 夹到末尾而非报错', store.open(saved.id, { offset: 9e9 }).body === '')
+  check('不存在的 id 返回 null', store.open(987654) === null)
+  store.save({ ts: Date.now() + 1, session: 'paging', role: 'user', title: '翻页甲', body: '翻页关键词 alpha 一号记录' })
+  store.save({ ts: Date.now() + 2, session: 'paging', role: 'user', title: '翻页乙', body: '翻页关键词 alpha 二号记录' })
+  const s0 = store.search('翻页关键词', { limit: 1, offset: 0 })
+  const s1 = store.search('翻页关键词', { limit: 1, offset: 1 })
+  check(
+    'search 的 offset 翻到不同条目',
+    s0.length === 1 && s1.length === 1 && s0[0].id !== s1[0].id,
+    `${s0[0]?.id} vs ${s1[0]?.id}`,
+  )
+  check('offset 越过命中总数时返回空', store.search('翻页关键词', { limit: 5, offset: 50 }).length === 0)
 }
 
 // ── 关停 ──
