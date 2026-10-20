@@ -154,7 +154,7 @@ GET  /memory-vault/entry?id=<id>           # 单条全文（点开卡片时才�
 POST /memory-vault/resize   {"gigabytes": 10}   或   {"reset": true}
 ```
 
-读接口只读、不读凭据；`/recent` 不带 `day` / `session` / `offset` 时保持旧的「最近 N 条」语义。唯一的写接口是 `/resize`，它只改容量上限，碰不到任何一条记忆内容。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
+读接口只读、不读凭据；`/recent` 无论带不带筛选与 `offset` 都会回 `total`（面板靠它算「还有 N 条」）。唯一的写接口是 `/resize`，它只改容量上限，碰不到任何一条记忆内容。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
 
 ---
 

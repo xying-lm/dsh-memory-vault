@@ -79,6 +79,8 @@ ok('空 query 返回空结果（不打全库）', miss.ok === true && miss.resul
 const recent = await (await fetch(`${base}/memory-vault/recent?limit=5`)).json()
 ok('GET /recent 返回 2 条', recent.ok === true && recent.results.length === 2, String(recent.results?.length))
 ok('/recent 最新在前', recent.results[0]?.ts > recent.results[1]?.ts)
+ok('/recent 不带 offset 也回 total（面板「还有 N 条」要用）', recent.total === 2, String(recent.total))
+ok('/recent 列表行带 chars 与 mode', typeof recent.results[0]?.chars === 'number' && typeof recent.results[0]?.mode === 'string', JSON.stringify(recent.results[0]))
 
 // ── 目录（按天/按会话）+ 分页 ──
 const cat = await (await fetch(`${base}/memory-vault/catalog`)).json()
