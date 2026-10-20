@@ -1,0 +1,19 @@
+# 依赖与构建产物（本插件零依赖，正常不会出现）
+node_modules/
+pnpm-lock.yaml
+
+# 运行期数据：记忆库与诊断日志，绝不能进仓库
+*.db
+*.db-wal
+*.db-shm
+debug.log
+
+# 本地交接单（含本机路径），不对外
+VERIFY.md
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

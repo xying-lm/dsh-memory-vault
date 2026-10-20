@@ -1,0 +1,66 @@
+{
+  "name": "dsh-memory-vault",
+  "version": "0.4.0",
+  "description": "5GB 磁盘长期记忆库（DeepSeek Harness 插件）：把跨会话对话自动沉淀进本地 SQLite/FTS5 库，按需检索并注入提示词，配 Web 用量面板。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "icon.svg",
+    "docs"
+  ],
+  "scripts": {
+    "test": "node test/store-test.mjs && node test/resize-test.mjs && node test/panel-test.mjs && node test/client-test.mjs && node test/plugin-smoke.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "plugin",
+    "memory",
+    "long-term-memory",
+    "sqlite",
+    "fts5",
+    "trigram"
+  ],
+  "author": "xying-lm",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xying-lm/dsh-memory-vault.git"
+  },
+  "homepage": "https://github.com/xying-lm/dsh-memory-vault#readme",
+  "bugs": {
+    "url": "https://github.com/xying-lm/dsh-memory-vault/issues"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.2-rc.1 <0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}
