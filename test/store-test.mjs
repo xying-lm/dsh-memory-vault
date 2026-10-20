@@ -2,7 +2,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MemoryStore, buildMatchQuery, makeSnippet, normalizeBody, pickDigest } from '../lib/store.js'
+import { MemoryStore, buildMatchQuery, makeSnippet, normalizeBody, pickDigest, isValidMode, MEMORY_MODES } from '../lib/store.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'vault-test-'))
 const dbPath = join(dir, 'vault.db')
@@ -134,6 +134,44 @@ check('stats 字段齐备', ['dbPath', 'rows', 'bytes', 'usedMB', 'maxMB', 'used
 }
 
 store.close()
+
+// --- 记忆模式：长期 / 本会话多次 / 单次 ---
+{
+  check('模式取值只有三种', MEMORY_MODES.join(',') === 'long,multi,once', MEMORY_MODES.join(','))
+  check('isValidMode 认 long', isValidMode('long'))
+  check('isValidMode 拒 unknown', !isValidMode('forever'))
+  const s = new MemoryStore({ dbPath: join(dir, 'mode.db') })
+  check('默认写入是长期', s.save({ session: 'A', role: 'user', body: '长期记忆：每周五发版' }).mode === 'long')
+  check('multi 能写进去', s.save({ session: 'A', role: 'user', body: '本会话才用的临时口径', mode: 'multi' }).mode === 'multi')
+  check('once 能写进去', s.save({ session: 'A', role: 'user', body: '一次性口令：只在这次说', mode: 'once' }).mode === 'once')
+  check('非法 mode 回落长期', s.save({ session: 'A', role: 'user', body: '乱传模式也该安全', mode: 'nope' }).mode === 'long')
+  const byMode = s.stats().byMode
+  check('统计里有模式分布', byMode.long === 2 && byMode.multi === 1 && byMode.once === 1, JSON.stringify(byMode))
+
+  // multi 只在自己会话可见
+  const inA = s.search('临时口径', { scopeSession: 'A' })
+  const inB = s.search('临时口径', { scopeSession: 'B' })
+  check('multi 在自己会话可见', inA.some((r) => r.body.includes('临时口径')), JSON.stringify(inA.map((r) => r.id)))
+  check('multi 在别的会话不可见', !inB.some((r) => r.body.includes('临时口径')), JSON.stringify(inB.map((r) => r.id)))
+  const longInB = s.search('每周五发版', { scopeSession: 'B' })
+  check('long 跨会话仍可见', longInB.some((r) => r.body.includes('每周五发版')))
+
+  // once 消费即删
+  const onceRow = s.search('一次性口令', { scopeSession: 'A' })[0]
+  check('once 能搜到', Boolean(onceRow))
+  const removed = s.consumeOnce([onceRow.id])
+  check('consumeOnce 删掉 1 条', removed === 1, String(removed))
+  check('once 删完搜不到', s.search('一次性口令', { scopeSession: 'A' }).length === 0)
+  check('consumeOnce 不误删 long', s.consumeOnce([1]) === 0)
+
+  // 过期清理
+  const oldTs = Date.now() - 13 * 60 * 60 * 1000
+  s.save({ ts: oldTs, session: 'A', role: 'user', body: '13 小时前的临时记忆', mode: 'multi' })
+  const purged = s.purgeTransient()
+  check('过期 multi 被清掉', purged.multi === 1, JSON.stringify(purged))
+  check('长期记忆不受影响', s.stats().byMode.long === 2, JSON.stringify(s.stats().byMode))
+  s.close()
+}
 
 // --- 重开持久化 ---
 const store2 = new MemoryStore({ dbPath, maxBytes: 5 * 1024 ** 3 })

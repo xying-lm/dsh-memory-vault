@@ -205,6 +205,17 @@ check('过短消息不入库（captureMinChars）', provided.memoryVault.stats()
     `${s0[0]?.id} vs ${s1[0]?.id}`,
   )
   check('offset 越过命中总数时返回空', store.search('翻页关键词', { limit: 5, offset: 50 }).length === 0)
+
+  // ── 记忆模式：multi 只在本会话可见、once 召回一次即删 ──
+  store.save({ ts: Date.now() + 3, session: 'paging', role: 'user', title: '临时', body: '临时口径 multi 只在本会话', mode: 'multi' })
+  check('multi 在本会话可搜到', store.search('临时口径', { scopeSession: 'paging' }).length > 0)
+  check('multi 在别的会话搜不到', store.search('临时口径', { scopeSession: 'other' }).length === 0)
+
+  store.save({ ts: Date.now() + 4, session: 'paging', role: 'user', title: '一次性', body: '一次性口令 once 只念一遍', mode: 'once' })
+  const onceHit = store.search('一次性口令', { scopeSession: 'paging' })[0]
+  check('once 落库后能搜到', Boolean(onceHit))
+  check('consumeOnce 之后搜不到', store.consumeOnce([onceHit.id]) === 1 && store.search('一次性口令', { scopeSession: 'paging' }).length === 0)
+  check('统计里出现模式分布', typeof store.stats().byMode === 'object' && store.stats().byMode.long > 0, JSON.stringify(store.stats().byMode))
 }
 
 // ── 关停 ──

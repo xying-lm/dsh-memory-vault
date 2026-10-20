@@ -65,12 +65,22 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 | `memory_search` | 在长期记忆里检索。支持中文整句当查询词，`offset` 可翻页。 |
 | `memory_open` | 按 id 分段读一条记忆的全文（`chars` 控制每页字数，返回 `next` 接着读）。 |
 | `memory_catalog` | 看库的整体目录：总条数、按天分布、最近的会话、时间跨度。 |
-| `memory_save` | 显式记住一条（约定、偏好、关键决策）。自动采集之外的手动强调。 |
+| `memory_save` | 显式记住一条（约定、偏好、关键决策）。默认长期；传 `mode: "multi"` 只本会话可见，`mode: "once"` 召回一次即删。 |
 | `memory_stats` | 看用量：条数、占用、配额、当前档位、时间跨度。 |
 | `memory_resize` | 改容量上限：给 `gigabytes: 5` 用常用档位，或 `2.5` 这样的自定义值（0.05~200）。立即生效、落库、重启不丢。 |
 | `memory_forget` | 按 id 删掉一条（不可恢复）。 |
 
 自动召回与这七个工具是**两条独立的路**：自动召回省事但可能漏，工具要模型主动调但问得准。两条都开着才稳。
+
+### 三种记忆模式
+
+| 模式 | 什么时候用 | 生命周期 |
+| --- | --- | --- |
+| `long`（长期，默认） | 约定、偏好、关键决策、踩过的坑 | 永久保留，跨会话可召回 |
+| `multi`（多次） | 「这个项目这周先这么办」这类**只在本会话有效**的口径 | 只在写入它的那个会话里可召回；12 小时后自动清理 |
+| `once`（单次） | 一次性的口令、临时编号、只想说一遍的事 | 被自动召回**一次**就从库里删掉（连正文都不留） |
+
+自动采集的两条配置决定「自动记下来的」算哪种：`captureMode`（默认 `long`）；手动 `memory_save` 时由你传的 `mode` 决定（默认 `defaultMode`）。`memory_stats` 会显示库里三种模式各有多少条。
 
 ---
 
@@ -85,6 +95,8 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 | `capture` | `true` | 自动沉淀对话。 |
 | `captureAssistant` | `true` | 连助手回复一起记。关掉只记你说的。 |
 | `captureMinChars` | `8` | 短于此字数的消息不记（「嗯」「好的」不占库）。 |
+| `defaultMode` | `long` | 手动 `memory_save` 不传 `mode` 时用哪种：`long` / `multi` / `once`。 |
+| `captureMode` | `long` | 自动采集的消息记成哪种。设成 `once` 会让自动采集的记忆被召回一次就删（一般不建议）。 |
 | `skipSubagent` | `true` | 跳过子代理会话，避免把中间过程记成记忆。 |
 | `recall` | `true` | 每轮自动检索并注入。 |
 | `recallLimit` | `5` | 单轮最多注入几条。 |
