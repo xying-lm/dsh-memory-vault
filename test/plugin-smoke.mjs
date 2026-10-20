@@ -132,10 +132,15 @@ check('召回返回了文本', typeof injected === 'string' && injected.length >
 check('召回内容包含历史事实', injected.includes('10.0.0.7') || injected.includes('pnpm build'), injected?.slice(0, 200))
 check('召回带防误用措辞', injected.includes('以当前指令为准'))
 check('召回排除了当前会话刚说过的话', !injected.includes('部署要注意什么来着'), injected?.slice(0, 200))
+// 压缩层：新会话第一轮带上过去会话的要点，第二轮起不再重复
+check('新会话第一轮带会话索引', injected.includes('【长期记忆·会话索引】'), injected?.slice(0, 80))
+check('索引里是过去会话的摘要', /- sess-[A-Z]+ · \d+ 条/.test(injected), injected?.slice(0, 220))
+check('索引不含当前会话自己的话', !injected.includes('部署要注意什么来着'))
 
 // 同一会话重复 assemble 不应重复注入同一条
 const second = recallProvider.text({ agent: { session: sessionB } })
 check('同一会话不重复注入', second === '' || !second.includes('10.0.0.7'), JSON.stringify(second?.slice(0, 80)))
+check('会话索引只注入一次', !second.includes('【长期记忆·会话索引】'), JSON.stringify(second?.slice(0, 80)))
 
 // 子代理会话不召回
 const subInjected = recallProvider.text({ agent: { session: { id: 'sess-SUB', header: { origin: 'subagent', delegationDepth: 1 } } } })

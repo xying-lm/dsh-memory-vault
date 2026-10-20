@@ -2,7 +2,7 @@
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MemoryStore, buildMatchQuery, makeSnippet, normalizeBody } from '../lib/store.js'
+import { MemoryStore, buildMatchQuery, makeSnippet, normalizeBody, pickDigest } from '../lib/store.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'vault-test-'))
 const dbPath = join(dir, 'vault.db')
@@ -111,6 +111,27 @@ check('单条上限被配额约束', store.maxBodyChars <= Math.floor(64 * 1024 
 // --- 统计字段完整性 ---
 const st = store.stats()
 check('stats 字段齐备', ['dbPath', 'rows', 'bytes', 'usedMB', 'maxMB', 'usedPercent', 'byRole', 'oldest', 'newest'].every((k) => k in st), JSON.stringify(st))
+
+// --- 会话摘要（压缩层）：抽取式、不调模型 ---
+{
+  const dir2 = mkdtempSync(join(tmpdir(), 'vault-digest-'))
+  const s = new MemoryStore({ dbPath: join(dir2, 'vault.db'), maxBytes: 5 * 1024 ** 3 })
+  s.save({ ts: 1000, session: 'sess-A', role: 'user', title: 't', body: '我们决定把部署脚本改成 pnpm deploy:prod，先跑数据库迁移再发布到生产环境。' })
+  s.save({ ts: 1100, session: 'sess-A', role: 'assistant', title: 't', body: '好的，迁移命令是 pnpm migrate，注意先备份数据库。' })
+  s.save({ ts: 2000, session: 'sess-B', role: 'user', title: 't', body: '记忆库的配额上限改成 20GB 吧，常用档位里正好有这一档。' })
+  const digests = s.sessionDigests({ limit: 5 })
+  check('sessionDigests 覆盖两个会话', digests.length === 2, String(digests.length))
+  check('会话摘要按最近时间排序', digests[0].session === 'sess-B', digests[0].session)
+  check('每个会话都有摘要', digests.every((d) => d.digest.length > 0), JSON.stringify(digests.map((d) => d.digest.length)))
+  check('摘要抓住关键事实', digests.some((d) => /pnpm deploy:prod|pnpm migrate/.test(d.digest)), JSON.stringify(digests.map((d) => d.digest)))
+  check('摘要长度受控', digests.every((d) => d.digest.length <= 270), JSON.stringify(digests.map((d) => d.digest.length)))
+  check('count 与库内条数一致', digests.find((d) => d.session === 'sess-A')?.count === 2, JSON.stringify(digests.map((d) => d.count)))
+  check('excludeSession 生效', s.sessionDigests({ excludeSession: 'sess-B' }).every((d) => d.session !== 'sess-B'))
+  check('没有实词的短句不出摘要', pickDigest([{ role: 'user', body: '这个那个就是' }], {}) === '')
+  const tight = s.sessionDigests({ limit: 5, perSessionChars: 40 })
+  check('perSessionChars 生效', tight.every((d) => d.digest.length <= 41), JSON.stringify(tight.map((d) => d.digest.length)))
+  s.close()
+}
 
 store.close()
 
