@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1433" height="642" viewBox="0 0 1433 642" role="img" aria-label="dsh-memory-vault 面板示意图（内容为虚构示例）">
+  <title>dsh-memory-vault 面板示意图（示例数据，全部虚构）</title>
+  <desc>用于 README 的面板外观示意；所有标题、会话 id、数字均为虚构示例，不含任何真实对话内容。</desc>
+  <defs>
+    <linearGradient id="bar" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#4d6bfe"/>
+      <stop offset="1" stop-color="#7aa2ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <rect width="1433" height="642" fill="#f6f7f9"/>
+
+  <!-- 左侧图标栏 -->
+  <rect x="0" y="0" width="56" height="642" fill="#eceef2"/>
+  <rect x="14" y="18" width="28" height="28" rx="8" fill="#4d6bfe" opacity="0.15"/>
+  <path d="M21 32h14M28 25v14" stroke="#4d6bfe" stroke-width="2" stroke-linecap="round"/>
+  <rect x="18" y="86" width="20" height="16" rx="4" fill="#c9cdd6"/>
+  <rect x="18" y="132" width="20" height="16" rx="4" fill="#c9cdd6"/>
+  <rect x="18" y="178" width="20" height="16" rx="4" fill="#c9cdd6"/>
+
+  <!-- 标题 -->
+  <text x="88" y="42" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17" font-weight="600" fill="#20232a">长期记忆</text>
+  <text x="164" y="42" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" fill="#8a8f99">dsh-memory-vault · 跨会话记忆库</text>
+
+  <!-- 用量条 -->
+  <rect x="88" y="60" width="1315" height="8" rx="4" fill="#e2e5ec"/>
+  <rect x="88" y="60" width="96" height="8" rx="4" fill="url(#bar)"/>
+  <text x="88" y="90" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" fill="#5b6069">已用 26.8 KB / 5120 MB · 记录 20 条</text>
+
+  <!-- 容量上限 -->
+  <text x="88" y="124" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="600" fill="#3a3f47">容量上限</text>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12">
+    <rect x="88" y="134" width="52" height="26" rx="13" fill="#e8ebf2" stroke="#d5d9e2"/>
+    <text x="114" y="151" text-anchor="middle" fill="#3a3f47">1 GB</text>
+    <rect x="148" y="134" width="52" height="26" rx="13" fill="#4d6bfe"/>
+    <text x="174" y="151" text-anchor="middle" fill="#ffffff">5 GB</text>
+    <rect x="208" y="134" width="60" height="26" rx="13" fill="#e8ebf2" stroke="#d5d9e2"/>
+    <text x="238" y="151" text-anchor="middle" fill="#3a3f47">10 GB</text>
+    <rect x="276" y="134" width="60" height="26" rx="13" fill="#e8ebf2" stroke="#d5d9e2"/>
+    <text x="306" y="151" text-anchor="middle" fill="#3a3f47">20 GB</text>
+    <rect x="344" y="134" width="60" height="26" rx="13" fill="#e8ebf2" stroke="#d5d9e2"/>
+    <text x="374" y="151" text-anchor="middle" fill="#3a3f47">50 GB</text>
+    <rect x="414" y="134" width="96" height="26" rx="6" fill="#ffffff" stroke="#d5d9e2"/>
+    <text x="426" y="151" fill="#9aa0aa">自定义 GB</text>
+    <rect x="518" y="134" width="56" height="26" rx="6" fill="#20232a"/>
+    <text x="546" y="151" text-anchor="middle" fill="#ffffff">应用</text>
+  </g>
+  <text x="88" y="178" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="11" fill="#9aa0aa">可填 0.05~200 GB，回车或点「应用」。缩小容量会立刻淘汰超出的最旧记忆。</text>
+
+  <!-- 检索框 -->
+  <rect x="88" y="196" width="1200" height="38" rx="8" fill="#ffffff" stroke="#dde1e8"/>
+  <text x="104" y="220" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" fill="#9aa0aa">检索记忆（支持中文子串）</text>
+  <rect x="1300" y="196" width="103" height="38" rx="8" fill="#20232a"/>
+  <text x="1351" y="220" text-anchor="middle" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="13" fill="#ffffff">检索</text>
+
+  <!-- 目录 -->
+  <text x="88" y="266" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12" font-weight="600" fill="#3a3f47">目录</text>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="12">
+    <rect x="88" y="278" width="132" height="26" rx="13" fill="#4d6bfe"/>
+    <text x="154" y="295" text-anchor="middle" fill="#ffffff">2026-01-08 · 12</text>
+    <rect x="228" y="278" width="132" height="26" rx="13" fill="#eef1f6" stroke="#dde1e8"/>
+    <text x="294" y="295" text-anchor="middle" fill="#3a3f47">2026-01-05 · 8</text>
+    <rect x="368" y="278" width="120" height="26" rx="13" fill="#eef1f6" stroke="#dde1e8"/>
+    <text x="428" y="295" text-anchor="middle" fill="#3a3f47">会话 3f2a91c0</text>
+    <rect x="496" y="278" width="120" height="26" rx="13" fill="#eef1f6" stroke="#dde1e8"/>
+    <text x="556" y="295" text-anchor="middle" fill="#3a3f47">会话 7b1e4d52</text>
+  </g>
+  <text x="88" y="330" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="11" fill="#9aa0aa">共 20 条 · 点一天或一个会话筛选，再点一下取消</text>
+
+  <!-- 卡片 -->
+  <g filter="url(#shadow)">
+    <rect x="88" y="344" width="1315" height="80" rx="10" fill="#ffffff" stroke="#e4e7ee"/>
+    <rect x="88" y="436" width="1315" height="80" rx="10" fill="#ffffff" stroke="#e4e7ee"/>
+    <rect x="88" y="528" width="1315" height="80" rx="10" fill="#ffffff" stroke="#e4e7ee"/>
+  </g>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif">
+    <text x="108" y="372" font-size="13" font-weight="600" fill="#20232a">示例：部署脚本先跑 dry-run 再发布</text>
+    <text x="1250" y="372" font-size="11" fill="#9aa0aa">2026-01-08 10:24 · 用户 · 58 字</text>
+    <text x="108" y="394" font-size="12" fill="#5b6069">演示用的虚构条目：发布前先跑 dry-run，确认之后再执行真正的发布命令。</text>
+    <text x="108" y="414" font-size="11" fill="#9aa0aa">会话 3f2a91c0 · 点开看全文</text>
+
+    <text x="108" y="464" font-size="13" font-weight="600" fill="#20232a">示例：面板只读，删除走 memory_forget</text>
+    <text x="1238" y="464" font-size="11" fill="#9aa0aa">2026-01-08 10:31 · 助手 · 41 字</text>
+    <text x="108" y="486" font-size="12" fill="#5b6069">演示用的虚构条目：面板只有读接口和一个改容量的写接口。</text>
+    <text x="108" y="506" font-size="11" fill="#9aa0aa">会话 3f2a91c0 · 点开看全文</text>
+
+    <text x="108" y="556" font-size="13" font-weight="600" fill="#20232a">示例：中文检索靠 FTS5 trigram</text>
+    <text x="1256" y="556" font-size="11" fill="#9aa0aa">2026-01-05 09:02 · 用户 · 36 字</text>
+    <text x="108" y="578" font-size="12" fill="#5b6069">演示用的虚构条目：两字以内走 LIKE 补位，三字以上走 trigram。</text>
+    <text x="108" y="598" font-size="11" fill="#9aa0aa">会话 7b1e4d52 · 点开看全文</text>
+  </g>
+
+  <text x="88" y="630" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="10" fill="#b0b5bf">示意图：以上标题、时间、会话 id、字数均为虚构示例，不是任何真实对话。</text>
+</svg>

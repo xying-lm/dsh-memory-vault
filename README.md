@@ -4,9 +4,9 @@
 
 零运行时依赖——只用 Node 24 内置的 `node:sqlite`（FTS5 trigram），不需要 `npm install`，不需要下载向量模型。
 
-![记忆库面板](docs/panel.png)
+![记忆库面板](docs/panel-mock.svg)
 
-<sub>截图是 0.3.x 的面板：目录（按天/按会话）与点开全文是 0.4.0 加的，还没重拍。</sub>
+<sub>示意图，所有标题/会话 id/数字均为虚构示例。真实面板的外观由 `lib/client.js` 决定，可直接读源码。</sub>
 
 ---
 
