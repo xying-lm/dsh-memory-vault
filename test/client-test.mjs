@@ -83,13 +83,13 @@ try {
 }
 ok(!threw, 'apply 不抛异常', threw && String(threw.stack || threw))
 ok(injectKeys.length === 1 && injectKeys[0] === 'slots', 'apply 通过 ctx.inject(["slots"]) 等服务', injectKeys)
-ok(injected.length === 3, '三处 slots.inject 都执行了', injected)
+ok(injected.length === 4, '四处 slots.inject 都执行了', injected)
 ok(injected[0] === 'sidebar.panellist', '第一处座位是 sidebar.panellist', injected[0])
 ok(injected[1] === 'conversation.input.left', '第二处座位是输入区（紧挨完全权限右侧）', injected[1])
-ok(injected[2] === 'main', '第三处座位是 main', injected[2])
-ok(registrations.length === 3, '三个座位都 register 成功', registrations.length)
+ok(injected[2] === 'conversation.input.left' && injected[3] === 'main', '第三、四处座位是文件选择器与 main', injected.slice(2))
+ok(registrations.length === 4, '四个座位都 register 成功', registrations.length)
 
-const [iconReg, modeReg, panelReg] = registrations
+const [iconReg, fileReg, modeReg, panelReg] = registrations
 ok(iconReg && iconReg.meta.name === 'sidebar.panellist', '图标注册名 = sidebar.panellist', iconReg && iconReg.meta.name)
 ok(iconReg && iconReg.meta.id === 'dsh-memory-vault', '图标 id = 面板 id', iconReg && iconReg.meta.id)
 ok(iconReg && Number.isFinite(iconReg.meta.order), '图标 order 是有限数', iconReg && iconReg.meta.order)
@@ -98,6 +98,7 @@ ok(iconReg && typeof iconReg.meta.label === 'function', '图标 label 是函数'
 const label = iconReg && iconReg.meta.label()
 ok(typeof label === 'string' && label.length > 0, 'label() 返回非空字符串', label)
 
+ok(fileReg && fileReg.meta.name === 'conversation.input.left' && String(fileReg.meta.id).endsWith('-file'), '文件选择器注册在输入区', fileReg && fileReg.meta.id)
 ok(modeReg && modeReg.meta.name === 'conversation.input.left', '模式选择器注册名 = conversation.input.left', modeReg && modeReg.meta.name)
 ok(modeReg && String(modeReg.meta.id).indexOf('dsh-memory-vault') === 0, '模式选择器 id 归属本插件', modeReg && modeReg.meta.id)
 

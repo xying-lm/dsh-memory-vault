@@ -94,6 +94,24 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 
 > 要全局默认值，还是改配置里的 `captureMode` / `defaultMode`；输入框里这个是「这个会话怎么记」的临时开关。
 
+### 对话文件：一条线索一个文件
+
+记忆库是「一堆碎片」，而人聊事情是按线索走的。所以每次会话都会挂到一个**对话文件**上：
+
+- 第一条消息时自动新建一个 `.md`（存在库目录的 `threads\` 下），文件名带日期与短标题，会话从此归这条线索；
+- 输入框左边的「文件」按钮可以把它换成任意旧文件 —— 下一个会话挂上去，第一轮就会收到这行：
+
+  ```
+  【对话文件·续接】接着「修插件加载」这条线索（文件 …\threads\2026-10-21-修插件加载.md）：
+  <最近 6 条要点的摘要>
+  （这条线索共 12 条记忆；要原话用 memory_search 带 thread=3，或直接读这个文件。）
+  ```
+
+- 挂在旧文件上时，检索会**优先在这条线索内部**取两条再补全库 —— 「接着上次那个问题」靠的是线索内命中，而不是全库泛搜；
+- 每条消息同时追加进那个 `.md`（人可读、可备份、可以丢进任何编辑器或 git），库里则记 `thread` 外键。
+
+「突破上下文」在这里的真实边界：续接注入的是一份**摘要**（默认 600 字）而不是整条线索的原文，剩下的靠 `memory_search thread=…` 和 `memory_open` 按需取。窗口没变大，但「同一条线索的连续两次会话」不再从零开始。
+
 ---
 
 ## 配置
@@ -101,7 +119,7 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
 | `enabled` | `true` | 总开关。关掉后不采集不召回，已有记忆保留。 |
-| `dbPath` | `D:\dsh-memory\vault.db` | 库文件路径。换路径**不会**迁移旧数据。 |
+| `dbPath` | `D:\dsh-memory\vault.db` | 库文件路径。面板「库位置」里改会写 `location.json`（优先于本项）并复制旧库；改写后需重启。 |
 | `maxGB` | `5` | 自定义容量（GB）。仅当 `sizePreset = custom` 时生效。 |
 | `sizePreset` | `custom` | 常用档位 `1` / `5` / `10` / `20` / `50`（GB），或 `custom` 用 `maxGB`。选档位时忽略 `maxGB`。 |
 | `capture` | `true` | 自动沉淀对话。 |
@@ -119,9 +137,13 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 | `recallRecentWindow` | `30` | 当前会话最近这么多条不参与召回（它们还在上下文里，重复注入只会挤占预算）。 |
 | `sessionIndex` | `true` | 新会话第一轮注入一次「过去会话要点」（压缩层）。关掉则只靠检索按需取。 |
 | `sessionIndexLimit` | `6` | 索引最多列几个过去会话（每个约 150 字，只在新会话第一轮付一次）。 |
+| `threads` | `true` | 对话文件：每条线索写成磁盘一个 `.md`，会话可以挂到旧文件上接着聊。 |
+| `threadResumeTurns` | `6` | 续接旧文件时，第一轮带回多少条最近记忆。 |
+| `threadResumeChars` | `600` | 续接摘要的字数上限（只在挂旧文件的第一轮付一次）。 |
+| `threads` | `true` | 对话文件：每条线索写成磁盘一个 `.md`，会话可以挂到旧文件上接着聊（首条消息自动建档，输入框「文件」按钮可换）。 |
 | `humanMemory` | `true` | 人类式记忆：三因子排序（相关度 × 显著性 × 时间衰减）+ 联想扩展 + 显著性回填。关掉退回纯 bm25 相关度。 |
 | `factCards` | `true` | 巩固层：把跨会话反复出现的重点压成事实卡。召回时事实卡排在最前，并标 `· 事实卡`。 |
-| `panel` | `true` | Web 侧边面板。它会在宿主 Web 载体上新增 HTTP 面 `/memory-vault/*`（stats / search / recent / catalog / entry 只读，resize 是唯一的写路由且只改容量），随监听地址暴露（本机默认回环 127.0.0.1）。 |
+| `panel` | `true` | Web 侧边面板（含对话文件列表与库位置）。它会在宿主 Web 载体上新增 HTTP 面 `/memory-vault/*`（stats / search / recent / catalog / entry 只读，resize 是唯一的写路由且只改容量），随监听地址暴露（本机默认回环 127.0.0.1）。 |
 
 配置非法会在**加载期**直接报错并指出是哪个键——不会带着错配置默默跑。
 
@@ -187,13 +209,15 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 
 ## Web 面板
 
-侧栏面板图标「长期记忆」→ 中央面板，五个部分：
+侧栏面板图标「长期记忆」→ 中央面板，七个部分：
 
 - **用量条**：已用 / 上限（MB）、百分比、记录条数、库文件路径、最新写入时间。
 - **容量上限**：`1 / 5 / 10 / 20 / 50 GB` 五个常用档位一键切换，也能填任意自定义值（`0.05~200`）；改完立即生效并落库，重启不会被配置文件覆盖回去，想回退点「恢复配置值」。
 - **检索框**：和 `memory_search` 走同一条检索路径，回车即查，结果显示标题 / 时间 / 角色 / 字数 / 摘录。
 - **目录**：按天、按会话两种切片各给一排标签（`2026-10-20 · 23`、`会话 a147bcec · 13`），点一下只看那一组，再点一下取消。库里的条目再多，也是先收窄再翻，不用滚一整天。
 - **列表 + 点开全文**：默认 20 条一页（按时间倒序），底部「加载更多」继续翻；每张卡片本身就是按钮 —— 点一下按需取该条全文展开（最多 320px 高、可滚动），再点收起。列表接口故意不带正文，所以翻页再快也不会把整库拖进浏览器。
+- **对话文件**：当前会话挂在哪条线索上、以及最近 8 条线索的「几个会话 / 几条记忆」。
+- **库位置**：库文件放在哪、是否为自定义位置；可填新路径「应用」（会把旧库复制过去，重启生效）或「恢复默认」。
 
 数据来自宿主半边的路由：
 
@@ -204,11 +228,17 @@ GET  /memory-vault/recent?limit=20&offset=0[&day=2026-10-20][&session=<id>]
 GET  /memory-vault/catalog                 # 目录：按天 / 按会话的条数索引
 GET  /memory-vault/entry?id=<id>           # 单条全文（点开卡片时才请求）
 GET  /memory-vault/session-mode?session=<id>   # 本会话当前的记忆模式
+GET  /memory-vault/threads[?session=<id>]  # 对话文件列表 + 本会话挂的那个
+GET  /memory-vault/thread?id=<id>           # 某条线索的摘要
+GET  /memory-vault/location                # 库文件当前位置
 POST /memory-vault/resize   {"gigabytes": 10}   或   {"reset": true}
 POST /memory-vault/session-mode   {"session": "<id>", "mode": "long|multi|once"}
+POST /memory-vault/threads        {"title": "可选"}
+POST /memory-vault/session-thread {"session": "<id>", "thread": 12}
+POST /memory-vault/location       {"path": "D:\\new\\vault.db"} 或 {"reset": true}
 ```
 
-读接口只读、不读凭据；`/recent` 无论带不带筛选与 `offset` 都会回 `total`（面板靠它算「还有 N 条」）。写接口只有两个，都碰不到任何一条记忆内容：`/resize` 改容量上限，`/session-mode` 改「这个会话之后怎么记」。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
+读接口只读、不读凭据；`/recent` 无论带不带筛选与 `offset` 都会回 `total`（面板靠它算「还有 N 条」）。写接口有五个，都碰不到任何一条记忆的正文：`/resize` 改容量上限，`/session-mode` 改「这个会话之后怎么记」，`/threads` 新建线索，`/session-thread` 把会话挂到线索，`/location` 换库文件位置（只复制文件，不删旧库）。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
 
 ---
 
