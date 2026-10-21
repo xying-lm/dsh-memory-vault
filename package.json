@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory-vault",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "5GB 磁盘长期记忆库（DeepSeek Harness 插件）：把跨会话对话自动沉淀进本地 SQLite/FTS5 库，按需检索并注入提示词，配 Web 用量面板。",
   "type": "module",
   "main": "lib/index.js",
@@ -19,7 +19,7 @@
     "docs"
   ],
   "scripts": {
-    "test": "node test/store-test.mjs && node test/resize-test.mjs && node test/panel-test.mjs && node test/client-test.mjs && node test/client-interact-test.mjs && node test/plugin-smoke.mjs && node test/retrieval-test.mjs && node test/human-memory-test.mjs && node test/thread-test.mjs"
+    "test": "node test/store-test.mjs && node test/resize-test.mjs && node test/panel-test.mjs && node test/client-test.mjs && node test/client-interact-test.mjs && node test/plugin-smoke.mjs && node test/retrieval-test.mjs && node test/human-memory-test.mjs && node test/thread-test.mjs && node test/thread-autosend-test.mjs"
   },
   "keywords": [
     "deepseek-harness",
