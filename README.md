@@ -82,6 +82,18 @@ plugin_manager install_bundle  target="file:<你的克隆路径>/dsh-memory-vaul
 
 自动采集的两条配置决定「自动记下来的」算哪种：`captureMode`（默认 `long`）；手动 `memory_save` 时由你传的 `mode` 决定（默认 `defaultMode`）。`memory_stats` 会显示库里三种模式各有多少条。
 
+#### 在对话里直接换模式
+
+输入框那一行、**「完全权限」控件的右边**有一个 `记忆 长期 ▾` 的小按钮（座位 `conversation.input.left`）。点开是三个选项：
+
+- **长期** — 永久保存，任何会话都能召回
+- **本会话** — 只在这个会话可见，12 小时后清掉
+- **单次** — 被召回一次就删除，不留痕
+
+选完立刻生效：**之后**这个会话的自动采集、以及模型调用 `memory_save` 时没显式传 `mode` 的，都按这个模式存。它只作用于当前会话，且只存在内存里（重启回到默认 `captureMode`）——不是全局设置，所以不会悄悄改掉别的会话。
+
+> 要全局默认值，还是改配置里的 `captureMode` / `defaultMode`；输入框里这个是「这个会话怎么记」的临时开关。
+
 ---
 
 ## 配置
@@ -151,10 +163,12 @@ GET  /memory-vault/search?q=<词>&limit=10
 GET  /memory-vault/recent?limit=20&offset=0[&day=2026-10-20][&session=<id>]
 GET  /memory-vault/catalog                 # 目录：按天 / 按会话的条数索引
 GET  /memory-vault/entry?id=<id>           # 单条全文（点开卡片时才请求）
+GET  /memory-vault/session-mode?session=<id>   # 本会话当前的记忆模式
 POST /memory-vault/resize   {"gigabytes": 10}   或   {"reset": true}
+POST /memory-vault/session-mode   {"session": "<id>", "mode": "long|multi|once"}
 ```
 
-读接口只读、不读凭据；`/recent` 无论带不带筛选与 `offset` 都会回 `total`（面板靠它算「还有 N 条」）。唯一的写接口是 `/resize`，它只改容量上限，碰不到任何一条记忆内容。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
+读接口只读、不读凭据；`/recent` 无论带不带筛选与 `offset` 都会回 `total`（面板靠它算「还有 N 条」）。写接口只有两个，都碰不到任何一条记忆内容：`/resize` 改容量上限，`/session-mode` 改「这个会话之后怎么记」。整块面板注册失败也只会让面板缺席，不影响采集 / 召回 / 工具。
 
 ---
 
@@ -194,7 +208,7 @@ D:\dsh-memory\vault.db-shm    共享内存索引
 零依赖，不用 `npm install`（Node 24 自带 `node:sqlite`）。五个测试文件全是自包含脚本，跑的是临时库 + 真 `node:http`，不碰你的真实记忆库：
 
 ```bash
-npm test          # 197 项断言：存储 45 + 容量 37 + 面板 35 + 客户端渲染 37 + 插件装配 43
+npm test          # 270 项断言：存储 66 + 容量 37 + 面板 44 + 客户端渲染 40 + 客户端交互 29 + 插件装配 54
 node test/panel-test.mjs   # 也可以单跑某一个
 ```
 

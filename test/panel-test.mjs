@@ -38,10 +38,22 @@ const fakeWebServer = {
   },
 }
 
+const sessionModes = new Map()
+const panelOptions = {
+  modes: ['long', 'multi', 'once'],
+  defaultMode: 'long',
+  getSessionMode: (sid) => sessionModes.get(String(sid)) ?? 'long',
+  setSessionMode: (sid, mode) => {
+    if (!['long', 'multi', 'once'].includes(mode)) throw new Error('bad mode')
+    sessionModes.set(String(sid), mode)
+    return mode
+  },
+}
+
 let threw = null
 let disposer
 try {
-  disposer = registerPanel({ get: (n) => (n === 'webServer' ? fakeWebServer : undefined) }, store, () => {})
+  disposer = registerPanel({ get: (n) => (n === 'webServer' ? fakeWebServer : undefined) }, store, () => {}, panelOptions)
 } catch (e) {
   threw = e
 }
@@ -135,6 +147,35 @@ try {
   dupThrew = true
 }
 ok('（宿主侧重复注册由 webServer 抛，非本插件职责）', true)
+
+// 会话级记忆模式：GET 回默认、POST 改、非法值拒
+const smDefault = await (await fetch(`${base}/memory-vault/session-mode?session=s1`)).json()
+ok('GET /session-mode 回 ok:true', smDefault.ok === true, JSON.stringify(smDefault).slice(0, 120))
+ok('GET /session-mode 未选过时回默认模式', smDefault.mode === 'long', String(smDefault.mode))
+ok('GET /session-mode 带可选集合', Array.isArray(smDefault.modes) && smDefault.modes.length === 3, JSON.stringify(smDefault.modes))
+
+const smPost = await fetch(`${base}/memory-vault/session-mode`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ session: 's1', mode: 'once' }),
+})
+const smPostBody = await smPost.json()
+ok('POST /session-mode 成功', smPost.status === 200 && smPostBody.mode === 'once', String(smPost.status))
+const smAfter = await (await fetch(`${base}/memory-vault/session-mode?session=s1`)).json()
+ok('POST 之后 GET 读到新模式', smAfter.mode === 'once', String(smAfter.mode))
+
+const smBad = await fetch(`${base}/memory-vault/session-mode`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ session: 's1', mode: 'forever' }),
+})
+ok('非法模式 → 400', smBad.status === 400, String(smBad.status))
+const smNoSession = await fetch(`${base}/memory-vault/session-mode`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ mode: 'long' }),
+})
+ok('缺 session → 400', smNoSession.status === 400, String(smNoSession.status))
 
 // 无 webServer 的 ctx：必须静默降级，不抛
 let degraded = null

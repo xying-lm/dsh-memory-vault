@@ -87,10 +87,20 @@ const ROWS = Array.from({ length: 3 }, (_, k) => ({
   mode: 'long',
 }))
 const calls = []
-globalThis.fetch = async (url) => {
+const posts = []
+globalThis.fetch = async (url, init) => {
   const path = String(url)
+  const method = (init && init.method) || 'GET'
   calls.push(path)
+  if (method !== 'GET') posts.push({ path, method, body: (init && init.body) || '' })
   const json = (v) => ({ ok: true, json: async () => v })
+  if (path.includes('/session-mode')) {
+    if (method !== 'GET') {
+      const parsed = JSON.parse((init && init.body) || '{}')
+      return json({ ok: true, session: parsed.session, mode: parsed.mode, modes: ['long', 'multi', 'once'] })
+    }
+    return json({ ok: true, mode: 'long', modes: ['long', 'multi', 'once'], defaultMode: 'long' })
+  }
   if (path.includes('/stats')) {
     return json({
       ok: true,
@@ -134,9 +144,11 @@ const mod = entry.factory((name) => {
 const { Panel } = mod.__panel
 
 let tree = null
+let activeComponent = null
+let activeProps = {}
 function renderTree() {
   cursor = 0
-  tree = Panel({ ctx: {} })
+  tree = activeComponent(activeProps)
   for (const hook of hooks) {
     if (hook && hook.pending) {
       const fn = hook.pending
@@ -146,6 +158,8 @@ function renderTree() {
   }
   return tree
 }
+activeComponent = Panel
+activeProps = { ctx: {} }
 
 const textOf = (node) => {
   if (node === null || node === undefined || node === false) return ''
@@ -216,6 +230,55 @@ try {
 ok('点会话 chip 不抛错', threw === '', threw)
 ok('会话筛选后仍有卡片', cards().length === 3, String(cards().length))
 ok('请求带上了 session 参数', calls.some((u) => u.includes('session=im%3Aqq_0cfa7d')), JSON.stringify(calls.slice(-3)))
+
+// ── 输入区记忆模式选择器（conversation.input.left，紧挨「完全权限」右侧）──
+const { ModeChip } = mod.__panel
+hooks = []
+cursor = 0
+tree = null
+function renderChip(props) {
+  activeComponent = ModeChip
+  activeProps = props
+  return renderTree()
+}
+
+renderChip({ sessionId: 'session-aaaa' })
+await flush()
+renderChip({ sessionId: 'session-aaaa' })
+ok('选择器初次挂载就去问宿主当前模式', calls.some((u) => u.includes('/session-mode?session=session-aaaa')), JSON.stringify(calls.slice(-2)))
+ok('选择器显示「长期」', textOf(tree).includes('长期'), textOf(tree))
+ok('未点开时没有选项列表', findAll(tree).filter((n) => n.props && n.props.role === 'option').length === 0)
+
+const chipBtn = findAll(tree).find((n) => n.type === 'button' && textOf(n).includes('记忆'))
+ok('找到选择器按钮', !!chipBtn)
+threw = ''
+try {
+  chipBtn.props.onClick()
+  await flush()
+  renderChip({ sessionId: 'session-aaaa' })
+} catch (error) {
+  threw = error?.message ?? String(error)
+}
+ok('点开选择器不抛错', threw === '', threw)
+const options = findAll(tree).filter((n) => n.props && n.props.role === 'option')
+ok('点开后列出三种模式', options.length === 3, String(options.length))
+ok('选项里有「本会话」', textOf(tree).includes('本会话'))
+ok('选项里有「单次」', textOf(tree).includes('单次'))
+
+const onceOpt = options.find((n) => textOf(n).includes('单次'))
+threw = ''
+try {
+  onceOpt.props.onClick()
+  await flush()
+  renderChip({ sessionId: 'session-aaaa' })
+} catch (error) {
+  threw = error?.message ?? String(error)
+}
+ok('点「单次」不抛错', threw === '', threw)
+ok('POST /session-mode 带上了 session', posts.some((p) => p.path.includes('/session-mode') && p.body.includes('session-aaaa')), JSON.stringify(posts))
+ok('POST /session-mode 带上了 mode=once', posts.some((p) => p.body.includes('"once"')), JSON.stringify(posts))
+ok('选完按钮显示「单次」', textOf(tree).includes('单次'), textOf(tree))
+ok('选完自动收起列表', findAll(tree).filter((n) => n.props && n.props.role === 'option').length === 0)
 
 console.log(`\n${fail === 0 ? '全部通过' : '有失败'}：${pass} pass / ${fail} fail`)
 process.exit(fail === 0 ? 0 : 1)

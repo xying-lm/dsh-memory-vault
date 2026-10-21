@@ -4,6 +4,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createServer } from 'node:http'
 
 // 默认测工作区源码（相对本脚本定位）；设 VAULT_ROOT 可指向**已安装的 generation 副本**，
 // 用来确认「装进去的那份」也能跑（防止 files 白名单漏文件）。
@@ -49,6 +50,16 @@ const disposers = []
 let recallProvider = null
 const provided = {}
 const logs = []
+const routes = []
+const webServer = {
+  register: (route) => {
+    routes.push(route)
+    return () => {
+      const i = routes.indexOf(route)
+      if (i >= 0) routes.splice(i, 1)
+    }
+  },
+}
 const ctx = {
   logger: () => ({ info: (m) => logs.push(['info', m]), warn: (m) => logs.push(['warn', m]), error: (m) => logs.push(['error', m]) }),
   on: (event, fn) => {
@@ -59,6 +70,7 @@ const ctx = {
     if (service === 'systemPrompt') {
       return { context: (def) => { recallProvider = def; return () => { recallProvider = null } } }
     }
+    if (service === 'webServer') return webServer
     return undefined // tools 不可得 → 走降级路径
   },
   effect: (fn) => { disposers.push(fn()) },
@@ -216,6 +228,41 @@ check('过短消息不入库（captureMinChars）', provided.memoryVault.stats()
   check('once 落库后能搜到', Boolean(onceHit))
   check('consumeOnce 之后搜不到', store.consumeOnce([onceHit.id]) === 1 && store.search('一次性口令', { scopeSession: 'paging' }).length === 0)
   check('统计里出现模式分布', typeof store.stats().byMode === 'object' && store.stats().byMode.long > 0, JSON.stringify(store.stats().byMode))
+}
+
+// ── 会话级记忆模式：输入框右侧选择器写的那条路 ──
+// 先把面板路由塞进真 http server，再用 POST /session-mode 改 sess-A 的模式，
+// 然后说一句话，验证「自动采集跟随会话模式」而不是配置里的 captureMode。
+const panelRoute = routes.find((r) => r.path === '/memory-vault')
+check('面板路由已注册（假 webServer）', Boolean(panelRoute))
+if (panelRoute) {
+  const server = createServer((req, res) => panelRoute.handler(req, res))
+  await new Promise((r) => server.listen(0, '127.0.0.1', r))
+  const base = `http://127.0.0.1:${server.address().port}`
+  const modeRes = await fetch(`${base}/memory-vault/session-mode`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ session: 'sess-A', mode: 'multi' }),
+  })
+  const modeBody = await modeRes.json()
+  check('POST /session-mode 改成本会话模式', modeRes.status === 200 && modeBody.mode === 'multi', JSON.stringify(modeBody))
+  const readBack = await (await fetch(`${base}/memory-vault/session-mode?session=sess-A`)).json()
+  check('GET /session-mode 读到 multi', readBack.mode === 'multi', String(readBack.mode))
+
+  emit(sessionA, {
+    type: 'user/message',
+    time: 1717000025000,
+    data: { role: 'user', content: [{ type: 'text', text: '这条只该在本会话可见：会话模式选择器应该已经把它切到 multi' }] },
+  })
+  await sleep(1300)
+  const rows = provided.memoryVault.store.recentPage({ limit: 3 }).rows
+  const newest = rows[0]
+  check('自动采集跟随会话模式（multi）', newest && newest.mode === 'multi', JSON.stringify(newest && { mode: newest.mode, title: newest.title }))
+  const scoped = provided.memoryVault.store.search('会话模式选择器', { scopeSession: 'sess-A' })
+  check('multi 记忆在本会话可召回', scoped.length > 0, String(scoped.length))
+  const elsewhere = provided.memoryVault.store.search('会话模式选择器', { scopeSession: 'sess-OTHER' })
+  check('multi 记忆在别的会话不可召回', elsewhere.length === 0, String(elsewhere.length))
+  await new Promise((r) => server.close(r))
 }
 
 // ── 关停 ──
