@@ -1,5 +1,6 @@
 // store.js 自测：真 node:sqlite + FTS5 trigram，不依赖 DSH
 import { mkdtempSync } from 'node:fs'
+import { DatabaseSync } from 'node:sqlite'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MemoryStore, buildMatchQuery, makeSnippet, normalizeBody, pickDigest, isValidMode, MEMORY_MODES } from '../lib/store.js'
@@ -134,6 +135,40 @@ check('stats 字段齐备', ['dbPath', 'rows', 'bytes', 'usedMB', 'maxMB', 'used
 }
 
 store.close()
+
+// --- 老库升级：没有 mode 列的库要能直接打开（真实踩过的坑）---
+{
+  const legacyPath = join(dir, 'legacy.db')
+  // 用 0.6.x 的建表语句造一个「没有 mode 列」的库，并塞一条历史记忆
+  const legacy = new DatabaseSync(legacyPath)
+  legacy.exec(`
+    CREATE TABLE mem (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, session TEXT NOT NULL DEFAULT '',
+      role TEXT NOT NULL, title TEXT NOT NULL DEFAULT '', body TEXT NOT NULL, hash TEXT NOT NULL,
+      chars INTEGER NOT NULL, bytes INTEGER NOT NULL, hits INTEGER NOT NULL DEFAULT 0,
+      last_hit INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE UNIQUE INDEX mem_hash ON mem(hash);
+  `)
+  legacy.prepare('INSERT INTO mem (ts, session, role, title, body, hash, chars, bytes) VALUES (?,?,?,?,?,?,?,?)')
+    .run(Date.now(), 'old', 'user', '老记忆', '老库里的一条记忆：用 pnpm 部署', 'h1', 20, 40)
+  legacy.close()
+
+  let upgraded = null
+  let upgradeError = ''
+  try {
+    upgraded = new MemoryStore({ dbPath: legacyPath })
+  } catch (error) {
+    upgradeError = error?.message ?? String(error)
+  }
+  check('老库（无 mode 列）能打开，不再抛 no such column', upgraded !== null, upgradeError)
+  if (upgraded) {
+    check('老库数据仍在', upgraded.stats().rows === 1, String(upgraded.stats().rows))
+    check('老记忆默认算长期', upgraded.stats().byMode.long === 1, JSON.stringify(upgraded.stats().byMode))
+    check('老库升级后还能检索', upgraded.search('pnpm 部署').length === 1)
+    upgraded.close()
+  }
+}
 
 // --- 记忆模式：长期 / 本会话多次 / 单次 ---
 {
